@@ -4,14 +4,13 @@ update_zstd_files() {
     local common_dir
     common_dir="$(abk_common_dir)"
 
-    ls "$common_dir/lib"
     abk_log "移除旧版本 ZSTD 文件……"
     rm -rf "$common_dir/lib/zstd/.*"
     rm "$common_dir/crypto/zstd.c" "$common_dir/fs/btrfs/zstd.c" "$common_dir/fs/squashfs/zstd_wrapper.c"
     find "$common_dir/include/linux" -name "zstd*.h" | xargs -I {} rm {}
 
     abk_log "复制新版本 ZSTD 文件……"
-    abk_copy_into_kernel "$MODULE_DIR/files/zstd/." "$common_dir/"
+    abk_copy_into_kernel "$MODULE_DIR/files/zstd/." "common"
 }
 
 patch_zstd_lib_kconfig() {

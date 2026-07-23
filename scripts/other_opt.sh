@@ -41,7 +41,7 @@ other_opt() {
     abk_log "其他优化……"
     sed -i 's/find_get_page(mapping, index)/find_get_page_flags(mapping, index, FGP_ACCESSED)/g' "$common_dir/fs/f2fs/data.c"
 
-    abk_copy_into_kernel "$MODULE_DIR/files/arch/llvm/." "$common_dir/arch/llvm"
+    abk_copy_into_kernel "$MODULE_DIR/files/arch/llvm/." "common/arch/llvm"
 
     abk_append_line_once "$common_dir/arch/Kconfig" 'source "arch/llvm/Kconfig"'
     
