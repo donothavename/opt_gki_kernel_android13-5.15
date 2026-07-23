@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
 abk_log() {
-  printf '[ABK module] %s\n' "$*"
+  printf '[opt_gki_kernel_android13-5.15] %s\n' "$*"
 }
 
 abk_warn() {
-  printf '[ABK module][warn] %s\n' "$*" >&2
+  printf '[opt_gki_kernel_android13-5.15][warn] %s\n' "$*" >&2
 }
 
 abk_die() {
-  printf '[ABK module][error] %s\n' "$*" >&2
+  printf '[opt_gki_kernel_android13-5.15][error] %s\n' "$*" >&2
   exit 1
 }
 

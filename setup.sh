@@ -10,6 +10,10 @@ fi
 
 # shellcheck disable=SC1091
 source "$MODULE_DIR/scripts/libabk.sh"
+# shellcheck disable=SC1091
+source "$MODULE_DIR/scripts/update_zstd.sh"
+# shellcheck disable=SC1091
+source "$MODULE_DIR/scripts/other_opt.sh"
 
 abk_require_env KERNEL_ROOT DEFCONFIG CUSTOM_EXTERNAL_MODULE_STAGE
 
@@ -21,14 +25,10 @@ abk_log "kernel root: $KERNEL_ROOT"
 
 case "$CUSTOM_EXTERNAL_MODULE_STAGE" in
   after_patch)
-    # Source-tree changes usually belong here.
-    #
-    # Examples:
-    #   abk_apply_patch_dir "$MODULE_DIR/patches/common"
-    #   abk_copy_into_kernel "$MODULE_DIR/files/drivers/example" "common/drivers/example"
-    #
-    # The template is intentionally a no-op.
-    abk_log "after_patch: no changes configured"
+    update_zstd_files
+    patch_zstd_lib_kconfig
+    patch_zstd_fun_name
+    other_opt
     ;;
 
   before_build)
