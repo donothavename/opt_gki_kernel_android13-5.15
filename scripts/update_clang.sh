@@ -1,0 +1,14 @@
+update_clang() {
+    local common_dir clang_ver
+    common_dir="$(abk_common_dir)"
+
+    abk_require_file "$common_dir/build.config.constants"
+
+    sed -i 's/CLANG_VERSION=.*/CLANG_VERSION=r584948c/' "$common_dir/build.config.constants"
+
+    abk_log "更新 clang，拉取 main-kernel-2026 分支"
+
+    cd "$KERNEL_ROOT/prebuilts/clang/host"
+    rm -r linux-x86/
+    git clone -b main-kernel-2026 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth=1
+}

@@ -13,6 +13,8 @@ source "$MODULE_DIR/scripts/libabk.sh"
 # shellcheck disable=SC1091
 source "$MODULE_DIR/scripts/update_zstd.sh"
 # shellcheck disable=SC1091
+source "$MODULE_DIR/scripts/update_clang.sh"
+# shellcheck disable=SC1091
 source "$MODULE_DIR/scripts/other_opt.sh"
 
 abk_require_env KERNEL_ROOT DEFCONFIG CUSTOM_EXTERNAL_MODULE_STAGE
@@ -29,6 +31,7 @@ case "$CUSTOM_EXTERNAL_MODULE_STAGE" in
     patch_zstd_lib_kconfig
     patch_zstd_fun_name
     other_opt
+    update_clang
     ;;
 
   before_build)
