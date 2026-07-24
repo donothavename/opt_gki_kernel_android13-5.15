@@ -82,11 +82,21 @@ opt_string() {
     common_dir="$(abk_common_dir)"
 
     abk_require_file "$common_dir/arch/arm64/lib/strcmp.S"
+    abk_require_file "$common_dir/arch/arm64/lib/strncmp.S"
     abk_require_file "$common_dir/arch/arm64/lib/memcmp.S"
+    abk_require_file "$common_dir/arch/arm64/include/asm/string.h"
+    abk_require_file "$common_dir/arch/arm64/include/asm/assembler.h"
 
     abk_log "更新 string lib"
 
     abk_copy_into_kernel "$MODULE_DIR/files/opt_string/." "common"
+
+    sed -i 's/EXPORT_SYMBOL_NOHWKASAN/EXPORT_SYMBOL_NOKASAN/g' "$common_dir/arch/arm64/lib/strncmp.S"
+
+    sed -i '/#ifdef CONFIG_KASAN_HW_TAGS/,/#endif/d' "$common_dir/arch/arm64/include/asm/assembler.h"
+
+    perl -0777 -pi -e 's/#ifndef CONFIG_KASAN_HW_TAGS\n((?:[^\n]*\n)*?)#endif\n/$1/g' "$common_dir/arch/arm64/include/asm/string.h"
+
 }
 
 opt_page_clear() {
