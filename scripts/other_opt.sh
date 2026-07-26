@@ -45,17 +45,49 @@ other_opt() {
     local common_dir
     common_dir="$(abk_common_dir)"
 
+    abk_require_file "$common_dir/fs/f2fs/gc.c"
+    abk_require_file "$common_dir/mm/vmstat.c"
     abk_require_file "$common_dir/fs/f2fs/data.c"
+    abk_require_file "$common_dir/kernel/sched/fair.c"
+    abk_require_file "$common_dir/kernel/sched/core.c"
+    abk_require_file "$common_dir/kernel/power/process.c"
+    abk_require_file "$common_dir/kernel/time/alarmtimer.c"
 
     abk_log "其他优化……"
 
+    o3_opt
     opt_a510
     opt_string
     opt_page_clear
     opt_copy_page
     enable_llvm_polly
 
+    sed -i 's/__read_mostly = HZ/__read_mostly = 20 * HZ/g' "$common_dir/mm/vmstat.c"
+
+    sed -i 's/20 * MSEC_PER_SEC/MSEC_PER_SEC/g' "$common_dir/kernel/power/process.c"
+
+    sed -i 's/2 * MSEC_PER_SEC/ktime_to_ms(min) + 1/g' "$common_dir/kernel/time/alarmtimer.c"
+
+    sed -i 's/static_branch_unlikely/IS_ENABLED(CONFIG_NUMA_BALANCING) \&\& static_branch_unlikely/g' "$common_dir/kernel/sched/fair.c"
+
+    sed -i 's/p->policy = policy/p->policy = policy == SCHED_FIFO ? SCHED_RR : policy/g' "$common_dir/kernel/sched/core.c"
+
     sed -i 's/find_get_page(mapping, index)/find_get_page_flags(mapping, index, FGP_ACCESSED)/g' "$common_dir/fs/f2fs/data.c"
+
+    perl -0777 -pi -e 's/\tsbi->gc_thread = NULL;\s+}\s+out:/\tsbi->gc_thread = NULL;\n\t}\n\tset_task_ioprio(sbi->gc_thread->f2fs_gc_task, IOPRIO_PRIO_VALUE(IOPRIO_CLASS_IDLE, 0));\nout:/g' "$common_dir/fs/f2fs/gc.c"
+}
+
+o3_opt() {
+    local common_dir target_makefile
+    common_dir="$(abk_common_dir)"
+
+    abk_require_file "$common_dir/init/Kconfig"
+
+    abk_log "启用 -O3 优化……"
+
+    sed -i 's/\tdepends on ARC$//g' "$common_dir/init/Kconfig"
+
+    abk_enable_config CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3
 }
 
 opt_a510() {

@@ -11,11 +11,13 @@ fi
 # shellcheck disable=SC1091
 source "$MODULE_DIR/scripts/libabk.sh"
 # shellcheck disable=SC1091
-source "$MODULE_DIR/scripts/update_zstd.sh"
-# shellcheck disable=SC1091
-source "$MODULE_DIR/scripts/update_clang.sh"
+source "$MODULE_DIR/scripts/opt_zram.sh"
 # shellcheck disable=SC1091
 source "$MODULE_DIR/scripts/other_opt.sh"
+# shellcheck disable=SC1091
+source "$MODULE_DIR/scripts/set_defconfig.sh"
+# shellcheck disable=SC1091
+source "$MODULE_DIR/scripts/update_clang.sh"
 
 abk_require_env KERNEL_ROOT DEFCONFIG CUSTOM_EXTERNAL_MODULE_STAGE
 
@@ -27,10 +29,12 @@ abk_log "kernel root: $KERNEL_ROOT"
 
 case "$CUSTOM_EXTERNAL_MODULE_STAGE" in
   after_patch)
-    update_zstd_files
+    builtin_zram
+    update_zstd
     patch_zstd_lib_kconfig
     patch_zstd_fun_name
     other_opt
+    set_defconfig
     update_clang
     ;;
 

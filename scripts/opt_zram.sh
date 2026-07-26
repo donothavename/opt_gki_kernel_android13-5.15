@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 
-update_zstd_files() {
+builtin_zram() {
+    local common_dir
+    common_dir="$(abk_common_dir)"
+
+    abk_require_file "$common_dir/android/gki_aarch64_modules"
+    abk_require_file "$common_dir/android/gki_system_dlkm_modules"
+
+    abk_log "内置 ZRAM ……"
+
+    perl -0777 -pi -e 's/mm\/zsmalloc.ko\ndrivers\/block\/zram\/zram.ko//gs' "$common_dir/android/gki_aarch64_modules"
+    perl -0777 -pi -e 's/drivers\/block\/zram\/zram.ko\nmm\/zsmalloc.ko//gs' "$common_dir/android/gki_system_dlkm_modules"
+
+    abk_enable_config CONFIG_ZRAM
+    abk_enable_config CONFIG_ZSMALLOC
+    abk_enable_config CONFIG_ZRAM_WRITEBACK
+}
+
+update_zstd() {
     local common_dir
     common_dir="$(abk_common_dir)"
 
@@ -20,7 +37,7 @@ patch_zstd_lib_kconfig() {
     abk_require_file "$common_dir/lib/Kconfig"
 
     abk_log "修补 lib/Kconfig"
-    perl -0777 -pi -e 's/config\s+ZSTD_COMPRESS\s+select\s+XXHASH\s+tristate\s+config\s+ZSTD_DECOMPRESS\s+select\s+XXHASH\s+tristate/config ZSTD_COMMON\n	select XXHASH\n	tristate\n\nconfig ZSTD_COMPRESS\n	select ZSTD_COMMON\n	tristate\n\nconfig ZSTD_DECOMPRESS\n	select ZSTD_COMMON\n	tristate/gs' "$common_dir/lib/Kconfig"
+    perl -0777 -pi -e 's/config\s+ZSTD_COMPRESS\s+select\s+XXHASH\s+tristate\s+config\s+ZSTD_DECOMPRESS\s+select\s+XXHASH\s+tristate/config ZSTD_COMMON\n\tselect XXHASH\n\ttristate\n\nconfig ZSTD_COMPRESS\n\tselect ZSTD_COMMON\n\ttristate\n\nconfig ZSTD_DECOMPRESS\n\tselect ZSTD_COMMON\n\ttristate/gs' "$common_dir/lib/Kconfig"
 }
 
 patch_zstd_fun_name() {
