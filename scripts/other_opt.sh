@@ -41,6 +41,23 @@ KBUILD_LDFLAGS  += -mllvm -march=armv9-a+crypto+nosve -mcpu=cortex-a510
 endif
 EOF)
 
+export TRACE_PRINTK_BLOCK=$(cat << 'EOF'
+
+if TRACING
+
+config DISABLE_TRACE_PRINTK
+	bool "Force disable trace_printk() usage"
+	default y
+	help
+	  When trace_printk() is used in any of the kernel source, it enables
+	  debugging functions which are not desired for production kernel.
+	  Enabling this option will replace trace_printk() with pr_debug().
+
+	  If in doubt, say Y.
+
+endif
+EOF)
+
 other_opt() {
     local common_dir
     common_dir="$(abk_common_dir)"
@@ -128,9 +145,9 @@ add_ssg() {
 
     abk_copy_into_kernel "$MODULE_DIR/files/ssg/." "common"
 
-    sed -i 's/bfq.o/bfq.o\n\nssg-$(CONFIG_MQ_IOSCHED_SSG)\t:= ssg-iosched.o\nssg-$(CONFIG_MQ_IOSCHED_SSG_CGROUP)\t+= ssg-cgroup.o\nobj-$(CONFIG_MQ_IOSCHED_SSG)\t+= ssg.o\n\nobj-$(CONFIG_BLK_CMDLINE_PARSER)\t+= cmdline-parser.o\n/g' "$common_dir/block/Makefile"
+    sed -i 's/bfq.o/bfq.o\n\nssg-$(CONFIG_MQ_IOSCHED_SSG)\t:= ssg-iosched.o\nssg-$(CONFIG_MQ_IOSCHED_SSG_CGROUP)\t+= ssg-cgroup.o\nobj-$(CONFIG_MQ_IOSCHED_SSG)\t+= ssg.o\n\nobj-$(CONFIG_BLK_CMDLINE_PARSER)\t+= cmdline-parser.o/g' "$common_dir/block/Makefile"
 
-    sed -i 's/endmenu/config MQ_IOSCHED_SSG\n\ttristate "SamSung Generic I/O scheduler"\n\tdefault n\n\thelp\n\t  SamSung Generic IO scheduler.\n\nconfig MQ_IOSCHED_SSG_CGROUP\n\ttristate "Control Group for SamSung Generic I/O scheduler"\n\tdefault n\n\tdepends on BLK_CGROUP\n\tdepends on MQ_IOSCHED_SSG\n\thelp\n\t  Control Group for SamSung Generic IO scheduler.\n\nendmenu/g' "$common_dir/block/Kconfig.iosched"
+    sed -i 's/endmenu/config MQ_IOSCHED_SSG\n\ttristate "SamSung Generic I\/O scheduler"\n\tdefault n\n\thelp\n\t  SamSung Generic IO scheduler.\n\nconfig MQ_IOSCHED_SSG_CGROUP\n\ttristate "Control Group for SamSung Generic I\/O scheduler"\n\tdefault n\n\tdepends on BLK_CGROUP\n\tdepends on MQ_IOSCHED_SSG\n\thelp\n\t  Control Group for SamSung Generic IO scheduler.\n\nendmenu/g' "$common_dir/block/Kconfig.iosched"
 
     abk_enable_config CONFIG_MQ_IOSCHED_SSG
     abk_enable_config CONFIG_MQ_IOSCHED_SSG_CGROUP
@@ -251,19 +268,26 @@ opt_copy_page() {
 }
 
 opt_trace_printk() {
-    local common_dir target_makefile
+    local common_dir target_file
     common_dir="$(abk_common_dir)"
+    target_file="$common_dir/kernel/trace/Kconfig"
 
-    abk_require_file "$common_dir/kernel/trace/Kconfig"
+    abk_require_file "$target_file"
     abk_require_file "$common_dir/include/linux/kernel.h"
 
     abk_log "启用 TRACE_PRINTK 优化……"
 
     perl -0777 -pi -e 's/^(#define trace_printk\(fmt, \.\.\.\)[\s\S]*?__trace_printk[\s\S]*?\} while \(0\))/#ifdef CONFIG_DISABLE_TRACE_PRINTK\n#define trace_printk pr_debug\n#else\n$1\n#endif/m' "$common_dir/include/linux/kernel.h"
 
-    abk_copy_into_kernel "$MODULE_DIR/files/trace_printk/." "common"
-
-    abk_append_line_once "$common_dir/kernel/trace/Kconfig" 'source "kernel/trace/trace_printk/Kconfig"'
+    if ! grep -Fq "DISABLE_TRACE_PRINTK" "$target_file"; then
+        awk '{
+            print $0;
+            if (prev ~ /\tbool$/ && $0 ~ /\tselect TRACING$/) {
+                print ENVIRON["TRACE_PRINTK_BLOCK"]
+            }
+            prev = $0
+        }' "$target_file" > "$target_file.tmp" && mv "$target_file.tmp" "$target_file"
+    fi
 }
 
 enable_llvm_polly() {
