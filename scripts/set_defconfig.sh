@@ -1,7 +1,6 @@
 set_defconfig() {
     abk_log "配置内核选项……"
 
-#    abk_enable_config CONFIG_BOEFFLA_WL_BLOCKER
     abk_enable_config CONFIG_DEFAULT_FQ_CODEL
     abk_enable_config CONFIG_LRU_GEN_ENABLED
     abk_enable_config CONFIG_NET_SCH_DEFAULT
