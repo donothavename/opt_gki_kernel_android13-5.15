@@ -5,9 +5,13 @@ builtin_zram() {
     common_dir="$(abk_common_dir)"
 
     abk_require_file "$common_dir/android/gki_aarch64_modules"
+    abk_require_file "$common_dir/drivers/block/zram/zram_drv.c"
     abk_require_file "$common_dir/android/gki_system_dlkm_modules"
 
     abk_log "内置 ZRAM ……"
+
+    sed -i 's/REQ_OP_READ/REQ_OP_READ | REQ_PRIO/g' "$common_dir/drivers/block/zram/zram_drv.c"
+    sed -i 's/parent->bi_opf/parent->bi_opf | REQ_PRIO/g' "$common_dir/drivers/block/zram/zram_drv.c"
 
     perl -0777 -pi -e 's/mm\/zsmalloc.ko\ndrivers\/block\/zram\/zram.ko//gs' "$common_dir/android/gki_aarch64_modules"
     perl -0777 -pi -e 's/drivers\/block\/zram\/zram.ko\nmm\/zsmalloc.ko//gs' "$common_dir/android/gki_system_dlkm_modules"
