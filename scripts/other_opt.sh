@@ -72,7 +72,6 @@ other_opt() {
     abk_require_file "$common_dir/mm/page_alloc.c"
     abk_require_file "$common_dir/fs/f2fs/segment.h"
     abk_require_file "$common_dir/kernel/sched/fair.c"
-    abk_require_file "$common_dir/kernel/sched/core.c"
     abk_require_file "$common_dir/kernel/power/process.c"
     abk_require_file "$common_dir/kernel/time/alarmtimer.c"
     abk_require_file "$common_dir/kernel/power/wakelock.c"
@@ -105,9 +104,7 @@ other_opt() {
     sed -i 's/DEF_MIN_FSYNC_BLOCKS\t8/DEF_MIN_FSYNC_BLOCKS\t20/g' "$common_dir/fs/f2fs/segment.h"
 
     sed -i 's/static_branch_unlikely/IS_ENABLED(CONFIG_NUMA_BALANCING) \&\& static_branch_unlikely/g' "$common_dir/kernel/sched/fair.c"
-
-    sed -i 's/p->policy = policy/p->policy = policy == SCHED_FIFO ? SCHED_RR : policy/g' "$common_dir/kernel/sched/core.c"
-
+ 
     sed -i 's/find_get_page(mapping, index)/find_get_page_flags(mapping, index, FGP_ACCESSED)/g' "$common_dir/fs/f2fs/data.c"
 
     sed -i 's/DEF_GC_THREAD_URGENT_SLEEP_TIME\t500/DEF_GC_THREAD_URGENT_SLEEP_TIME\t50/g' "$common_dir/fs/f2fs/gc.h"
