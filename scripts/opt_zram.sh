@@ -32,6 +32,9 @@ update_zstd() {
 
     abk_log "复制新版本 ZSTD 文件……"
     abk_copy_into_kernel "$MODULE_DIR/files/zstd/." "common"
+
+    patch_zstd_lib_kconfig
+    patch_zstd_fun_name
 }
 
 patch_zstd_lib_kconfig() {
@@ -79,4 +82,33 @@ patch_zstd_fun_name() {
     sed -i 's/ZSTD_decompressStream/zstd_decompress_stream/g' "$common_dir/fs/f2fs/compress.c"
     sed -i 's/zstd_cstream_workspace_bound(params.cParams)/zstd_cstream_workspace_bound(\&params.cParams)/g' "$common_dir/fs/f2fs/compress.c"
     sed -i 's/zstd_init_cstream(params,/zstd_init_cstream(\&params,/g' "$common_dir/fs/f2fs/compress.c"
+}
+
+add_zstdh() {
+    local common_dir
+    common_dir="$(abk_common_dir)"
+
+    abk_require_file "$common_dir/lib/Kconfig"
+    abk_require_file "$common_dir/lib/Makefile"
+    abk_require_file "$common_dir/crypto/Kconfig"
+    abk_require_file "$common_dir/crypto/Makefile"
+    abk_require_file "$common_dir/drivers/block/zram/zcomp.c"
+
+    abk_log "添加 ZSTDH 文件……"
+    abk_copy_into_kernel "$MODULE_DIR/files/zstdh/." "common"
+
+    abk_log "修补编译配置文件……"
+
+    perl -0777 -pi -e 's/config\s+ZSTD_DECOMPRESS\n\tselect ZSTD_COMMON\n\ttristate/config ZSTD_DECOMPRESS\n\tselect ZSTD_COMMON\n\ttristate\n\nconfig ZSTDH_COMMON\n\tselect XXHASH\n\ttristate\n\nconfig ZSTDH_COMPRESS\n\tselect ZSTDH_COMMON\n\ttristate\n\nconfig ZSTDH_DECOMPRESS\n\tselect ZSTDH_COMMON\n\ttristate/gs' "$common_dir/lib/Kconfig"
+    sed -i 's/obj-$(CONFIG_ZSTD_DECOMPRESS) += zstd\//obj-$(CONFIG_ZSTD_DECOMPRESS) += zstd\/\nobj-$(CONFIG_ZSTDH_COMPRESS) += zstdh\/\nobj-$(CONFIG_ZSTDH_DECOMPRESS) += zstdh\//g' "$common_dir/lib/Makefile"
+
+    perl -0777 -pi -e 's/\s+This is the zstd algorithm./\n\t  This is the zstd algorithm.\n\nconfig CRYPTO_ZSTDH\n\ttristate "Zstdh compression algorithm"\n\tselect CRYPTO_ALGAPI\n\tselect CRYPTO_ACOMP2\n\tselect ZSTDH_COMPRESS\n\tselect ZSTDH_DECOMPRESS\n\thelp\n\t  This is the zstdh algorithm./gs' "$common_dir/crypto/Kconfig"
+    sed -i 's/obj-$(CONFIG_CRYPTO_ZSTD) += zstd.o/obj-$(CONFIG_CRYPTO_ZSTD) += zstd.o\nobj-$(CONFIG_CRYPTO_ZSTDH) += zstdh.o/g' "$common_dir/crypto/Makefile"
+
+    perl -0777 -pi -e 's/\s+"zstd",/\n\t"zstd",\n#endif\n#if IS_ENABLED(CONFIG_CRYPTO_ZSTDH)\n\t"zstdh",/gs' "$common_dir/drivers/block/zram/zcomp.c"
+
+    abk_enable_config CONFIG_CRYPTO_ZSTDH
+    abk_enable_config CONFIG_ZSTDH_COMMON
+    abk_enable_config CONFIG_ZSTDH_COMPRESS
+    abk_enable_config CONFIG_ZSTDH_DECOMPRESS
 }

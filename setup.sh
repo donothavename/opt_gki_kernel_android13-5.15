@@ -31,8 +31,7 @@ case "$CUSTOM_EXTERNAL_MODULE_STAGE" in
   after_patch)
     builtin_zram
     update_zstd
-    patch_zstd_lib_kconfig
-    patch_zstd_fun_name
+    add_zstdh
     other_opt
     set_defconfig
     update_clang
