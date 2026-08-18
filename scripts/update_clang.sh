@@ -12,5 +12,5 @@ update_clang() {
 
     cd "$KERNEL_ROOT/prebuilts/clang/host"
     rm -r linux-x86/
-    git clone -b main-kernel-2026 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth=1
+    git clone -b main-kernel-2026 --single-branch https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth=1
 }

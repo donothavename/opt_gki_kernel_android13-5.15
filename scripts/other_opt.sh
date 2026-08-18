@@ -75,6 +75,7 @@ other_opt() {
     abk_require_file "$common_dir/kernel/power/process.c"
     abk_require_file "$common_dir/kernel/time/alarmtimer.c"
     abk_require_file "$common_dir/kernel/power/wakelock.c"
+    abk_require_file "$common_dir/drivers/android/binder_alloc.c"
 
     abk_log "其他优化……"
 
@@ -88,6 +89,10 @@ other_opt() {
     opt_trace_printk
     enable_llvm_polly
     add_boeffla_wl_blocker
+    add_mi_rmap_efficiency
+    add_xiaomi-unionpower
+    add_sew_mmap_bypass
+    add_sew_alloc_adjust
 
     sed -i 's/msecs_to_jiffies(20)/msecs_to_jiffies(8)/g' "$common_dir/fs/f2fs/f2fs.h"
 
@@ -114,6 +119,9 @@ other_opt() {
     sed -i 's/F2FS_RW_ATTR(GC_THREAD, f2fs_gc_kthread, gc_urgent_sleep_time/F2FS_RO_ATTR(GC_THREAD, f2fs_gc_kthread, gc_urgent_sleep_time/g' "$common_dir/fs/f2fs/sysfs.c"
 
     perl -0777 -pi -e 's/\tsbi->gc_thread = NULL;\s+}\s+out:/\tsbi->gc_thread = NULL;\n\t}\n\tset_task_ioprio(sbi->gc_thread->f2fs_gc_task, IOPRIO_PRIO_VALUE(IOPRIO_CLASS_IDLE, 0));\nout:/g' "$common_dir/fs/f2fs/gc.c"
+
+    sed -i 's/kfree(alloc->pages)/kvfree(alloc->pages)/g' "$common_dir/drivers/android/binder_alloc.c"
+    sed -i 's/kcalloc(alloc->buffer_size/kvcalloc(alloc->buffer_size/g' "$common_dir/drivers/android/binder_alloc.c"
 
     abk_copy_into_kernel "$MODULE_DIR/files/other/." "common"
 }
@@ -332,4 +340,90 @@ add_boeffla_wl_blocker() {
     sed -i 's/test.o/test.o\nobj-$(CONFIG_BOEFFLA_WL_BLOCKER)	+= boeffla_wl_blocker.o/g' "$common_dir/drivers/base/power/Makefile"
 
     abk_enable_config CONFIG_BOEFFLA_WL_BLOCKER
+}
+
+add_mi_rmap_efficiency() {
+    local common_dir
+    common_dir="$(abk_common_dir)"
+
+    abk_require_file "$common_dir/mm/Kconfig"
+    abk_require_file "$common_dir/mm/Makefile"
+    abk_require_file "$common_dir/mm/vmscan.c"
+    abk_require_file "$common_dir/include/trace/hooks/mm.h"
+
+    abk_log "添加 mi_rmap_efficiency ……"
+
+    abk_copy_into_kernel "$MODULE_DIR/files/xiaomi-mi_rmap/." "common"
+
+    abk_append_line_once "$common_dir/mm/Makefile" 'obj-$(CONFIG_MI_RMAP_EFFICIENCY) += mi_rmap_efficiency.o'
+
+    sed -i 's/endmenu/config MI_RMAP_EFFICIENCY\n\tbool "MI rmap efficiency: protect high-mapcount pages"\n\tdefault y\n\tdepends on ANDROID_VENDOR_HOOKS\n\thelp\n\t  Skip high-mapcount pages (>= mi_mapcount_thres, default 32) during\n\t  reclaim to reduce CPU load caused by reverse mapping during memory\n\t  reclaim, protecting multi-process-shared pages (GPU\/display buffers)\n\t  from being recycled. Faithful port of Xiaomis mi_rmap_efficiency.\n\nendmenu/g' "$common_dir/mm/Kconfig"
+
+    sed -i 's/bool should_protect = false/int should_protect = 0/g' "$common_dir/mm/vmscan.c"
+    sed -i 's/trace_android_vh_page_should_be_protected(page, &should_protect)/trace_android_vh_page_should_be_protected(page, sc->nr_scanned, sc->priority, \&sc->android_vendor_data1, \&should_protect)/g' "$common_dir/mm/vmscan.c"
+    perl -0777 -pi -e 's/\t\/\* Incremented by the number of inactive pages that were scanned \*\/\s+unsigned long nr_scanned;/\t\/* Incremented by the number of inactive pages that were scanned *\/\n\tunsigned long nr_scanned;\n\n\t\/* Vendor reclaim-ext data (e.g. skipped-page accounting). *\/\n\tu64 android_vendor_data1;/gs' "$common_dir/mm/vmscan.c"
+
+    sed -i 's/TP_PROTO(struct page \*page, bool \*should_protect)/TP_PROTO(struct page *page, unsigned long nr_scanned, s8 priority, u64 *ext, int *should_protect)/g' "$common_dir/include/trace/hooks/mm.h"
+    sed -i 's/TP_ARGS(page, should_protect)/TP_ARGS(page, nr_scanned, priority, ext, should_protect)/g' "$common_dir/include/trace/hooks/mm.h"
+
+    abk_enable_config CONFIG_MI_RMAP_EFFICIENCY
+}
+
+add_xiaomi-unionpower() {
+    local common_dir
+    common_dir="$(abk_common_dir)"
+
+    abk_require_file "$common_dir/drivers/Kconfig"
+    abk_require_file "$common_dir/drivers/Makefile"
+
+    abk_log "添加 xiaomi-unionpower ……"
+
+    abk_copy_into_kernel "$MODULE_DIR/files/xiaomi-unionpower/." "common"
+
+    abk_append_line_once "$common_dir/drivers/Makefile" 'obj-$(CONFIG_MI_UNION_POWER) += mihw/'
+
+    sed -i 's/endmenu/\nsource "drivers\/mihw\/Kconfig"\nendmenu/g' "$common_dir/drivers/Kconfig"
+
+    abk_enable_config CONFIG_MI_UNION_POWER
+}
+
+add_sew_mmap_bypass() {
+    local common_dir
+    common_dir="$(abk_common_dir)"
+
+    abk_require_file "$common_dir/mm/Kconfig"
+    abk_require_file "$common_dir/mm/Makefile"
+    abk_require_file "$common_dir/mm/vmscan.c"
+    abk_require_file "$common_dir/include/trace/hooks/vmscan.h"
+    abk_require_file "$common_dir/drivers/android/vendor_hooks.c"
+
+    abk_log "添加 sew_mmap_bypass ……"
+
+    abk_copy_into_kernel "$MODULE_DIR/files/sew_mmap_bypass/." "common"
+
+    abk_append_line_once "$common_dir/mm/Makefile" 'obj-$(CONFIG_SEW_MMAP_BYPASS) += sew_mmap_bypass.o'
+
+    sed -i 's/endmenu/config SEW_MMAP_BYPASS\n\tbool "Sew mmap direct-reclaim throttle bypass"\n\tdepends on ANDROID_VENDOR_HOOKS\n\tdefault y\n\thelp\n\t  Bypass direct-reclaim throttling for userspace tasks to reduce\n\t  mmap allocation latency under memory pressure (Sew R7).\n\nendmenu/g' "$common_dir/mm/Kconfig"
+
+    sed -i 's/\/\* Account for the throttling \*\//{\n\t\tbool bypass = false;\n\n\t\ttrace_android_vh_throttle_direct_reclaim_bypass(\&bypass);\n\t\tif (bypass)\n\t\t\tgoto out;\n\t}\n/g' "$common_dir/mm/vmscan.c"
+
+    sed -i 's/TP_ARGS(nr_reclaimed));/TP_ARGS(nr_reclaimed));\nDECLARE_HOOK(android_vh_throttle_direct_reclaim_bypass,\n\tTP_PROTO(bool *bypass),\n\tTP_ARGS(bypass));/g' "$common_dir/include/trace/hooks/vmscan.h"
+
+    sed -i 's/EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_shrink_slab_bypass);/EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_shrink_slab_bypass);\nEXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_throttle_direct_reclaim_bypass);/g' "$common_dir/drivers/android/vendor_hooks.c"
+}
+
+add_sew_alloc_adjust() {
+    local common_dir
+    common_dir="$(abk_common_dir)"
+
+    abk_require_file "$common_dir/mm/Kconfig"
+    abk_require_file "$common_dir/mm/Makefile"
+
+    abk_log "添加 sew_alloc_adjust ……"
+
+    abk_copy_into_kernel "$MODULE_DIR/files/sew_alloc_adjust/." "common"
+
+    abk_append_line_once "$common_dir/mm/Makefile" 'obj-$(CONFIG_SEW_ALLOC_ADJUST) += sew_alloc_adjust.o'
+
+    sed -i 's/endmenu/config SEW_ALLOC_ADJUST\n\tbool "Sew high-order DMA-IOMMU alloc flags adjustment"\n\tdefault y\n\tdepends on ANDROID_VENDOR_HOOKS\n\thelp\n\t  Drop __GFP_RECLAIM for high-order (order > PAGE_ALLOC_COSTLY_ORDER)\n\t  DMA-IOMMU and kvmalloc allocations to reduce reclaim-induced jank\n\t  under memory pressure (Sew R7).\n\nendmenu/g' "$common_dir/mm/Kconfig"
 }
