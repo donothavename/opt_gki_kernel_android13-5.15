@@ -350,6 +350,7 @@ add_mi_rmap_efficiency() {
     abk_require_file "$common_dir/mm/Makefile"
     abk_require_file "$common_dir/mm/vmscan.c"
     abk_require_file "$common_dir/include/trace/hooks/mm.h"
+    abk_require_file "$common_dir/drivers/android/vendor_hooks.c"
 
     abk_log "添加 mi_rmap_efficiency ……"
 
@@ -360,11 +361,12 @@ add_mi_rmap_efficiency() {
     sed -i 's/endmenu/config MI_RMAP_EFFICIENCY\n\tbool "MI rmap efficiency: protect high-mapcount pages"\n\tdefault y\n\tdepends on ANDROID_VENDOR_HOOKS\n\thelp\n\t  Skip high-mapcount pages (>= mi_mapcount_thres, default 32) during\n\t  reclaim to reduce CPU load caused by reverse mapping during memory\n\t  reclaim, protecting multi-process-shared pages (GPU\/display buffers)\n\t  from being recycled. Faithful port of Xiaomis mi_rmap_efficiency.\n\nendmenu/g' "$common_dir/mm/Kconfig"
 
     sed -i 's/bool should_protect = false/int should_protect = 0/g' "$common_dir/mm/vmscan.c"
-    sed -i 's/trace_android_vh_page_should_be_protected(page, &should_protect)/trace_android_vh_page_should_be_protected(page, sc->nr_scanned, sc->priority, \&sc->android_vendor_data1, \&should_protect)/g' "$common_dir/mm/vmscan.c"
+    sed -i 's/trace_android_vh_page_should_be_protected(page, &should_protect)/trace_android_vh_sew_page_should_be_protected(page, sc->nr_scanned, sc->priority, \&sc->android_vendor_data1, \&should_protect)/g' "$common_dir/mm/vmscan.c"
     perl -0777 -pi -e 's/\t\/\* Incremented by the number of inactive pages that were scanned \*\/\s+unsigned long nr_scanned;/\t\/* Incremented by the number of inactive pages that were scanned *\/\n\tunsigned long nr_scanned;\n\n\t\/* Vendor reclaim-ext data (e.g. skipped-page accounting). *\/\n\tu64 android_vendor_data1;/gs' "$common_dir/mm/vmscan.c"
 
-    sed -i 's/TP_PROTO(struct page \*page, bool \*should_protect)/TP_PROTO(struct page *page, unsigned long nr_scanned, s8 priority, u64 *ext, int *should_protect)/g' "$common_dir/include/trace/hooks/mm.h"
-    sed -i 's/TP_ARGS(page, should_protect)/TP_ARGS(page, nr_scanned, priority, ext, should_protect)/g' "$common_dir/include/trace/hooks/mm.h"
+    sed -i 's/android_vh_page_should_be_protected/android_vh_sew_page_should_be_protected,\n\tTP_PROTO(struct page *page, unsigned long nr_scanned, s8 priority, u64 *ext, int *should_protect),\n\tTP_ARGS(page, nr_scanned, priority, ext, should_protect));\nDECLARE_HOOK(android_vh_page_should_be_protected/g' "$common_dir/include/trace/hooks/mm.h"
+
+    sed -i 's/EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_page_should_be_protected);/EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_page_should_be_protected);\nEXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_sew_page_should_be_protected);/g' "$common_dir/drivers/android/vendor_hooks.c"
 
     abk_enable_config CONFIG_MI_RMAP_EFFICIENCY
 }
