@@ -122,6 +122,7 @@ other_opt() {
 
     sed -i 's/kfree(alloc->pages)/kvfree(alloc->pages)/g' "$common_dir/drivers/android/binder_alloc.c"
     sed -i 's/kcalloc(alloc->buffer_size/kvcalloc(alloc->buffer_size/g' "$common_dir/drivers/android/binder_alloc.c"
+    perl -0777 -pi -e 's/\s+kvfree\(alloc->pages\);\s+}\s+mutex_unlock\(&alloc->mutex\);/\n\t}\n\tmutex_unlock(&alloc->mutex);\n\tkvfree(alloc->pages);/gs' "$common_dir/drivers/android/binder_alloc.c"
 
     abk_copy_into_kernel "$MODULE_DIR/files/other/." "common"
 }
