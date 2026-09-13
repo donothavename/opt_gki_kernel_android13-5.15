@@ -12,9 +12,9 @@ update_clang() {
 
     cd "$KERNEL_ROOT/prebuilts/clang/host"
     rm -r linux-x86/
-    git clone --filter=blob:none --no-checkout --depth=1  -b main-kernel https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86
+    git clone --filter=blob:none --no-checkout --depth=1 -b main-kernel https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86
     cd linux-x86
     git sparse-checkout init --no-cone
-    echo '/*\n!/clang-*/\n/clang-r614150/' > ".git/info/sparse-checkout"
+    printf "/*\n!/clang-*/\n/clang-r614150/\n" > ".git/info/sparse-checkout"
     git checkout
 }
