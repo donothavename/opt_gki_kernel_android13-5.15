@@ -92,7 +92,7 @@ add_kshrink_lruvecd() {
     abk_require_file "$common_dir/mm/Makefile"
     abk_require_file "$common_dir/mm/vmscan.c"
     abk_require_file "$common_dir/mm/page_ext.c"
-    abk_require_file "$common_dir/android/vendor_hooks.c"
+    abk_require_file "$common_dir/drivers/android/vendor_hooks.c"
     abk_require_file "$common_dir/include/trace/hooks/vmscan.h"
 
     abk_log "添加异步 lruvec 回收……"
@@ -108,7 +108,7 @@ add_kshrink_lruvecd() {
     sed -i 's/#include <linux\/rcupdate.h>/#include <linux\/kshrink_lruvecd.h>\n#include <linux\/rcupdate.h>/g' "$common_dir/mm/page_ext.c"
     sed -i 's/page_pinner_ops,/page_pinner_ops,\n#endif\n#ifdef CONFIG_KSHRINK_LRUVECD\n\t\&kshrink_page_ext_ops,/g' "$common_dir/mm/page_ext.c"
 
-    sed -i 's/EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_handle_failed_page_trylock);/EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_handle_failed_page_trylock);\nEXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_handle_failed_page_trylock_mglru);/g' "$common_dir/android/vendor_hooks.c"
+    sed -i 's/EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_handle_failed_page_trylock);/EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_handle_failed_page_trylock);\nEXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_handle_failed_page_trylock_mglru);/g' "$common_dir/drivers/android/vendor_hooks.c"
 
     sed -i 's/TP_ARGS(page_list));/TP_ARGS(page_list));\nDECLARE_HOOK(android_vh_handle_failed_page_trylock_mglru,\n\tTP_PROTO(struct list_head *page_list),\n\tTP_ARGS(page_list));/g' "$common_dir/include/trace/hooks/vmscan.h"
 
