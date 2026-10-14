@@ -117,7 +117,7 @@ abk_append_line_once() {
 
   abk_require_file "$file"
   if ! grep -Fqx "$line" "$file"; then
-    printf '\n%s' "$line" >> "$file"
+    printf '\n%s\n' "$line" >> "$file"
     abk_log "append line to $file: $line"
   fi
 }
