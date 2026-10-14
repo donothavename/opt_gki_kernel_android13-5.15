@@ -11,6 +11,8 @@ fi
 # shellcheck disable=SC1091
 source "$MODULE_DIR/scripts/libabk.sh"
 # shellcheck disable=SC1091
+source "$MODULE_DIR/scripts/sew_opt.sh"
+# shellcheck disable=SC1091
 source "$MODULE_DIR/scripts/opt_zram.sh"
 # shellcheck disable=SC1091
 source "$MODULE_DIR/scripts/other_opt.sh"
@@ -32,6 +34,7 @@ case "$CUSTOM_EXTERNAL_MODULE_STAGE" in
     builtin_zram
     update_zstd
     add_zstdh
+    sew_kernel_opt
     other_opt
     set_defconfig
     update_clang
